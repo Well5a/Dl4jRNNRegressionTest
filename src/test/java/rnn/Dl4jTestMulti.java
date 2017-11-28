@@ -23,7 +23,6 @@ import org.deeplearning4j.nn.conf.layers.GravesLSTM;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -39,30 +38,33 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerMinMaxScaler;
-import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 /**
  * This unit test shows how to predict time series data with Dl4j recurrent neural networks.  
- * Specify the static parameters and run the test. The plot helps you to evaluate how well the prediction worked.
+ * Specify the static parameters and run the test. The plot helps you to evaluate how well the prediction went.
  * Be aware that you have to stop the JUnit Test manually because of an endless for loop to hold the plot.
  * The plot is then stored at the specified directory <tt>imageSaveDir</tt>.
  * <p>
- * The data is loaded from several CSV files. Every file is an own time series which is trained or predicted individually.
- * 
+ * The data is loaded from several CSV files (e.g. train or test). Every file is an own time series which is trained or predicted individually.
+ * <p>
+ * Good parameters: epoch learn  hl
+ * For sinus: 		7000, 0.001, 50
+ * For linreg: 		8000, 0.001, 50
+ * For passengers: 	3000, 0.001, 10
  * 
  * @author mwe
  */
 public class Dl4jTestMulti 
 {
-	static String datasetName 	= "linreg"; //sinus | linreg | passengers
-	static int nEpochs 			= 8000;		//number of iterations
-	static double learningrate 	= 0.001;	//higher values like '0.01' can't predict values (!?)
-	static int nHidden 			= 50;		//number of hidden layers
-	static int miniBatchSize 	= 32;  		//seems not to have any effect
+	final static String datasetName 	= "linreg"; 	//sinus | linreg | passengers
+	final static int nEpochs 			= 10000;		//number of iterations
+	final static double learningrate 	= 0.001;	//larger values like '0.01' or '0.1' can't predict values (!?)
+	final static int nHidden 			= 50;		//number of hidden layers
+	final static int miniBatchSize 		= 25;  	
 	
-	static int nTrainValues		= 100; 		//number of values for training, used for plotting
-	static String imageSaveDir 	= "/home/ubuntu/Schreibtisch/Dl4j Test Graphs/MultiTimestep/"+datasetName+"/hl"+nHidden+"/regression-"+String.valueOf(nEpochs + learningrate);
+	final static int nTrainValues		= 100; 		//number of values for training, used for plotting
+	final static String imageSaveDir 	= "/home/ubuntu/Schreibtisch/Dl4j Test Graphs/"+datasetName+"/hl"+nHidden+"/regression-"+String.valueOf(nEpochs + learningrate);
 	
     @Test
     public void predict() throws Exception 
@@ -73,16 +75,14 @@ public class Dl4jTestMulti
     	if(datasetName.equals("passengers")) delimiter = ";";
     	
 		SequenceRecordReader trainReader = new CSVSequenceRecordReader(0, delimiter);
-		trainReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/MultiTimestep/"+datasetName+"_train_%d.csv", 0, 4));   //loads 5 files
-//		trainReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/MultiTimestep/alternative/"+model+"_train_%d.csv", 0, 1));  //loads 2 files
-//		trainReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/SingleTimestep/"+model+"_train_%d.csv", 0, 0));   //loads 1 file
+		trainReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/"+datasetName+"_train_%d.csv", 0, 0));   //loads 1 file
 		//For regression, numPossibleLabels is not used. Setting it to -1 here
-	    DataSetIterator trainIter = new SequenceRecordReaderDataSetIterator(trainReader, miniBatchSize, -1, 1, true); //reader, batch size, label index,number of possible labels, regression	
+	    DataSetIterator trainIter = new SequenceRecordReaderDataSetIterator(trainReader, miniBatchSize, -1, 1, true); //reader, batch size, numPossibleLables, label index, regression	
 	    DataSet trainData = trainIter.next();
 	    
 	    SequenceRecordReader testReader = new CSVSequenceRecordReader(0, delimiter);
-	    testReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/MultiTimestep/"+datasetName+"_test_%d.csv", 0, 4));	//loads 5 files    
-	    DataSetIterator testIter = new SequenceRecordReaderDataSetIterator(testReader, miniBatchSize, -1, 1, true); //reader, batch size, label index,number of possible labels, regression
+	    testReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/"+datasetName+"_test_%d.csv", 0, 0));   //loads 1 file
+	    DataSetIterator testIter = new SequenceRecordReaderDataSetIterator(testReader, miniBatchSize, -1, 1, true); //reader, batch size, numPossibleLables, label index, regression
         DataSet testData = testIter.next();
 	    
         // ----- Output loaded data -----
@@ -119,55 +119,22 @@ public class Dl4jTestMulti
 	    // ----- Initialize the network -----
 	    MultiLayerNetwork net = new MultiLayerNetwork(conf);
         net.init();
-        net.setListeners(new ScoreIterationListener(20));
-
         
-        // ----- Train the network, evaluating the test set performance at each epoch -----
+        // ----- Train the network -----
         System.out.println("----- Training Start -----");   
         for (int i = 0; i < nEpochs; i++) 
         {
-        	trainData.forEach(timeSeries -> net.fit(timeSeries));
-           
-            if(i % 100 == 0)
+        	net.fit(trainData);
+            
+        	if(i % 100 == 0)
             {
             	System.out.println("----- Still training: "+i+" -----");
             }
         }
         System.out.println("----- Training Complete -----");
      
-        
-        // ----- Initialize rrnTimeStep with train data and predict test data -----
-        int seriesIter = 0;
-        INDArray init = Nd4j.zeros(1, 1);
-        for(DataSet timeSeries : trainData)
-        {
-        	if(seriesIter == 0) //for the first series
-        	{
-        		init = net.rnnTimeStep(timeSeries.getFeatureMatrix());
-        	}
-        	else
-        	{
-        		init = Nd4j.vstack(init, net.rnnTimeStep(timeSeries.getFeatureMatrix()));
-        	}
-        	seriesIter++;
-        }
-        System.out.println("----- initialized train data: ----- \n" + init);
-        
-        seriesIter = 0;
-        INDArray predicted = Nd4j.zeros(1, 1);
-        for(DataSet timeSeries : testData)
-        {
-        	if(seriesIter == 0)
-        	{
-        		predicted = net.rnnTimeStep(timeSeries.getFeatureMatrix());
-        	}
-        	else
-        	{
-        		predicted = Nd4j.vstack(predicted, net.rnnTimeStep(timeSeries.getFeatureMatrix()));
-        	}
-        	seriesIter++;
-        }   
-        System.out.println("----- predicted test data: ----- \n" + predicted);
+        INDArray init = net.rnnTimeStep(trainData.getFeatureMatrix());
+        INDArray predicted = net.rnnTimeStep(testData.getFeatureMatrix());
         
         // ----- Revert data back to original values for plotting -----
         normalizer.revert(trainData);
@@ -189,7 +156,24 @@ public class Dl4jTestMulti
         createSeries(c, init, 0, "Initial Train data");
         createSeries(c, testFeatures, nTrainValues, "Actual test data");
         createSeries(c, predicted, nTrainValues, "Predicted test data");
-
+        
+        
+        // ----- Additional validation step for linreg-----
+        if(datasetName.equals("linreg"))
+        {
+        	SequenceRecordReader validReader = new CSVSequenceRecordReader(0, delimiter);
+            validReader.initialize(new NumberedFileInputSplit(baseDir.getAbsolutePath() + "/"+datasetName+"_valid_%d.csv", 0, 0));   //loads 1 file
+    	    DataSetIterator validIter = new SequenceRecordReaderDataSetIterator(validReader, miniBatchSize, -1, 1, true); //reader, batch size, numPossibleLables, label index, regression
+            DataSet validData = validIter.next();
+            normalizer.transform(validData);
+            INDArray validated = net.rnnTimeStep(validData.getFeatureMatrix());
+            normalizer.revert(validData);
+            normalizer.revertLabels(validated);
+            INDArray validFeatures = validData.getLabels();
+            createSeries(c, validFeatures, nTrainValues+25, "Actual validation data");
+            createSeries(c, validated, nTrainValues+25, "Predicted validation data");
+        }
+        
         plotDataset(c);
 
         System.out.println("----- Example Complete -----");
@@ -216,7 +200,7 @@ public class Dl4jTestMulti
     
     private static void plotDataset(XYSeriesCollection c) throws IOException {
 
-        String title = "Multi Timestep Regression example";
+        String title = "RNN Regression example";
         String xAxisLabel = "Timestep";
         String yAxisLabel = "Count";
         PlotOrientation orientation = PlotOrientation.VERTICAL;

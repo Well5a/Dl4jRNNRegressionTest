@@ -6,13 +6,8 @@ The example has been removed from the official GitHub, the reason for that can b
 
 == Tests:
 
-Two JUnit tests can be found at src/test/java/rnn which implement and test the neural network:
-
-* Dl4jTestSingle: predicts a single timestep
-* Dl4jTestMulti: predicts several timesteps 
-
-The single timestep example is just for testing and should not be used in a productive way because it misses the point of RNNs. 
-The idea of RNNs is to predict a smaller timestep and add that to the trained model so the following timestep is predicted in respect of the previous one/ones.
+The test can be found at src/test/java/rnn which sets up, trains and tests the neural network at once. 
+A generated plot lets you evaluate how well the prediction went.
 
 == Example Data:
 
@@ -24,11 +19,10 @@ There are currently 3 different examples found at src/test/resources:
 
 == Problems:
 
-* multi timestep test is not working: when initializing the training data the first step seems to fit okay to the real values but from there on it gets worse and worse:
-
-image::multiregression.jpg[]
-Multi Timepstep Regression with 30000 (!!) iterations
-
 * learning rate must be 0.001 or lower otherwise the predicted test data consists of non real numbers (try it out and look at console)
-* number of iterations have to be 5000 or higher to get good predictions which results in long training times ( >5min with my setup)
+* number of iterations have to be at least 5000 to get good predictions which results in long training times ( >5min with my setup)
 * backpropagation seems to have a negative effect on the prediction
+* Even after exhausting parameter tuning there are still some more or less major differences between real and predicted data. For the linreg dataset the values somehow flatten with every time step: 
+
+image::linregflat.jpg[] 
+
