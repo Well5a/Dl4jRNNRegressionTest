@@ -55,7 +55,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  * 
  * @author mwe
  */
-public class Dl4jTestMulti 
+public class Dl4jRnnRegressionTest 
 {
 	final static String datasetName 	= "linreg"; 	//sinus | linreg | passengers
 	final static int nEpochs 			= 10000;		//number of iterations
