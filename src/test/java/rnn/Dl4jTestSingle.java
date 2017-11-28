@@ -1,4 +1,4 @@
-package Tests;
+package rnn;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -175,7 +175,7 @@ public class Dl4jTestSingle
     
     private static void plotDataset(XYSeriesCollection c) throws IOException {
 
-        String title = "Regression example";
+        String title = "Single Timestep Regression example";
         String xAxisLabel = "Timestep";
         String yAxisLabel = "Count";
         PlotOrientation orientation = PlotOrientation.VERTICAL;

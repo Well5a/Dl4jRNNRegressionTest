@@ -1,4 +1,4 @@
-package Tests;
+package rnn;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -56,7 +56,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 public class Dl4jTestMulti 
 {
 	static String datasetName 	= "linreg"; //sinus | linreg | passengers
-	static int nEpochs 			= 1000;		//number of iterations
+	static int nEpochs 			= 8000;		//number of iterations
 	static double learningrate 	= 0.001;	//higher values like '0.01' can't predict values (!?)
 	static int nHidden 			= 50;		//number of hidden layers
 	static int miniBatchSize 	= 32;  		//seems not to have any effect
@@ -216,7 +216,7 @@ public class Dl4jTestMulti
     
     private static void plotDataset(XYSeriesCollection c) throws IOException {
 
-        String title = "Regression example";
+        String title = "Multi Timestep Regression example";
         String xAxisLabel = "Timestep";
         String yAxisLabel = "Count";
         PlotOrientation orientation = PlotOrientation.VERTICAL;
