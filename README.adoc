@@ -1,4 +1,4 @@
-= Dl4j Test
+= Dl4j Recurrent Neural Network Regression Test
 
 This project is used for testing and evaluating the capabilities of Recurrent Neural Networks for regression problems written with Dl4j.
 It is inspired by and uses parts of this example: https://github.com/deeplearning4j/dl4j-examples/commit/53bcac436d118419e1153f00a72134488d73efaf .
