@@ -57,8 +57,8 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
  */
 public class Dl4jRnnRegressionTest 
 {
-	final static String datasetName 	= "linreg"; 	//sinus | linreg | passengers
-	final static int nEpochs 			= 10000;		//number of iterations
+	final static String datasetName 	= "sinus"; 	//sinus | linreg | passengers
+	final static int nEpochs 			= 7000;		//number of iterations
 	final static double learningrate 	= 0.001;	//larger values like '0.01' or '0.1' can't predict values (!?)
 	final static int nHidden 			= 50;		//number of hidden layers
 	final static int miniBatchSize 		= 25;  	

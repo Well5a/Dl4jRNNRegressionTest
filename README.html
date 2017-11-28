@@ -446,18 +446,41 @@ A generated plot lets you evaluate how well the prediction went.</p>
 <div class="paragraph">
 <p>There are currently 3 different examples found at src/test/resources:</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>linreg: Simple linear regression example with perfect fitting data</p>
-</li>
-<li>
-<p>sinus: Sinus like function</p>
-</li>
-<li>
-<p>passengers: Example dataset from the dl4j example Github Repository, found here: <a href="https://github.com/deeplearning4j/dl4j-examples/tree/f6baf6ac1733290167f541f27d0840b2156cc550/dl4j-examples/src/main/resources/rnnRegression" class="bare">https://github.com/deeplearning4j/dl4j-examples/tree/f6baf6ac1733290167f541f27d0840b2156cc550/dl4j-examples/src/main/resources/rnnRegression</a></p>
-</li>
-</ul>
+<div class="sect2">
+<h3 id="_linreg">linreg:</h3>
+<div class="paragraph">
+<p>Simple linear regression example with perfect fitting data</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="plots/linreg.jpg" alt="linreg">
+</div>
+<div class="title">Figure 1. Iterations: 8000; Learningrate: 0.001; Hidden Layers: 50</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sinus">sinus:</h3>
+<div class="paragraph">
+<p>Sinus like function</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="plots/sinus.jpg" alt="sinus">
+</div>
+<div class="title">Figure 2. Iterations: 7000; Learningrate: 0.001; Hidden Layers: 50</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_passengers">passengers:</h3>
+<div class="paragraph">
+<p>Example dataset from the Dl4j example Github Repository, found here: <a href="https://github.com/deeplearning4j/dl4j-examples/tree/f6baf6ac1733290167f541f27d0840b2156cc550/dl4j-examples/src/main/resources/rnnRegression" class="bare">https://github.com/deeplearning4j/dl4j-examples/tree/f6baf6ac1733290167f541f27d0840b2156cc550/dl4j-examples/src/main/resources/rnnRegression</a></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="plots/passengers.jpg" alt="passengers">
+</div>
+<div class="title">Figure 3. Iterations: 3000; Learningrate: 0.001; Hidden Layers: 10</div>
+</div>
 </div>
 </div>
 </div>
@@ -476,21 +499,16 @@ A generated plot lets you evaluate how well the prediction went.</p>
 <p>backpropagation seems to have a negative effect on the prediction</p>
 </li>
 <li>
-<p>Even after exhausting parameter tuning there are still some more or less major differences between real and predicted data. For the linreg dataset the values somehow flatten with every time step:</p>
+<p>Even after exhausting parameter tuning there are still some more or less major differences between real and predicted data. For the linreg dataset the values somehow flatten with every time step (see graph above).</p>
 </li>
 </ul>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="linregflat.jpg" alt="linregflat">
-</div>
 </div>
 </div>
 </div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2017-11-28 14:36:43 CET
+Last updated 2017-11-28 15:46:36 CET
 </div>
 </div>
 </body>
