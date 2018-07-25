@@ -61,12 +61,12 @@
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-core</artifactId>
-            <version>0.8.0</version>
+            <version>1.0.0-beta</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native-platform</artifactId>
-            <version>0.8.0</version>
+            <version>1.0.0-beta</version>
         </dependency>
 
         <dependency>
