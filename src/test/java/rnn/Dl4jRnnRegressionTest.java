@@ -4,14 +4,13 @@ import org.apache.commons.io.FileUtils;
 import org.datavec.api.records.reader.SequenceRecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader;
 import org.datavec.api.split.NumberedFileInputSplit;
+import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator;
 import org.deeplearning4j.earlystopping.EarlyStoppingConfiguration;
 import org.deeplearning4j.earlystopping.EarlyStoppingResult;
 import org.deeplearning4j.earlystopping.saver.LocalFileModelSaver;
 import org.deeplearning4j.earlystopping.scorecalc.DataSetLossCalculator;
 import org.deeplearning4j.earlystopping.termination.MaxEpochsTerminationCondition;
-import org.deeplearning4j.earlystopping.termination.MaxTimeIterationTerminationCondition;
-import org.deeplearning4j.earlystopping.termination.ScoreImprovementEpochTerminationCondition;
 import org.deeplearning4j.earlystopping.trainer.EarlyStoppingTrainer;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.BackpropType;
@@ -22,6 +21,9 @@ import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.ui.api.UIServer;
+import org.deeplearning4j.ui.stats.StatsListener;
+import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -54,7 +56,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -67,7 +68,7 @@ import java.util.concurrent.TimeUnit;
  * These sets again are split into several smaller time series. One series consists of features (their number is specified by <tt>minibatchSize</tt>) and one label.
  * Every feature and label represents a single time step in the series, in which the label is the last one and the value to be predicted. 
  * 
- * Good parameters: nEpochs	learnrate  	nHidden
+ * Good parameters: nEpochs	learnRate  	nHidden
  * For linreg: 		75	 	0.2			10 		(gets better with more epochs)
  * For sinus: 		50		0.15		50 		(gets better with more hidden layers)
  * For passengers: 	100		0.3			10 		(gets better with more epochs)
@@ -94,28 +95,44 @@ public class Dl4jRnnRegressionTest
     private static int numVariables = 0;  // in csv.
     
     //The dataset to be used: linreg | passengers | sinus
-    final static String datasetName = "linreg";
+    private final static String datasetName = "linreg";
     
     //include the series of time values in training or not
-    final static boolean includeTimeData = false;
+    private final static boolean includeTimeData = false;
     
     //Set number of examples for training, testing, and time steps
-    final static int trainSize 		= 300;		//max 100 for passengers, sinus - max 800 for linreg
-    final static int testSize 		= 100; 		//max 20 for passengers - max 40 for sinus - max 400 for linreg
-    final static int miniBatchSize 	= 20;
+    private final static int trainSize 		= 100;		//max 100 for passengers, sinus - max 800 for linreg
+    private final static int testSize 		= 40; 		//max 20 for passengers - max 40 for sinus - max 400 for linreg
+    private final static int miniBatchSize 	= 20;
         
     //Hyperparameters for tuning
-	final static int nEpochs 		= 75;		//number of iterations
-	final static double learnrate 	= 1e-6;		//1e-6
-	final static double dropoutRate = 1;		//probability of retaining an activation
-	final static int nHidden 		= 10;		//number of hidden layers
+    private final static int nEpochs 		= 50;		//number of iterations
+	private final static double learnRate   = 1e-6;		//1e-6
+    private final static double l2Value     = 1e-6;
+    private final static double dropoutRate = 0.8;		//probability of retaining an activation
+    private final static int backPropLength = 20;
+    private final static int nHidden 		= 25;		//number of hidden layers
     
 	//Location of the saved plots
-	final static String imageSaveDir = "/home/ubuntu/Schreibtisch/Dl4j Test Graphs/"+datasetName+"/hl"+nHidden+"/regression-"+String.valueOf(nEpochs + learnrate);
+    private final static String imageSaveDir = "C:\\Users\\mwe\\Desktop\\Dl4j Test Graphs\\"+datasetName+"\\hl"+nHidden+"\\regression-"+String.valueOf(nEpochs + learnRate)+".jpeg";
 
 	@Test
     public void predict() throws Exception 
     {
+        /**
+         * Monitoring and Visualization
+         */
+        //Initialize the user interface backend
+        UIServer uiServer = UIServer.getInstance();
+        //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
+        StatsStorage statsStorage = new InMemoryStatsStorage();         //Alternative: new FileStatsStorage(File), for saving and loading later
+        //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
+        uiServer.attach(statsStorage);
+
+
+        /**
+         * Data Preprocessing
+         */
         //Prepare multi time step data, see method comments for more info
         List<String> rawStrings = prepareTrainAndTest(trainSize, testSize, miniBatchSize);
         System.out.println(rawStrings.toString());
@@ -123,21 +140,21 @@ public class Dl4jRnnRegressionTest
         
         // ----- Load the training data -----
         SequenceRecordReader trainFeatures = new CSVSequenceRecordReader();
-        trainFeatures.initialize(new NumberedFileInputSplit(featuresDirTrain.getAbsolutePath() + "/train_%d.csv", 0, trainSize - 1));
+        trainFeatures.initialize(new NumberedFileInputSplit(featuresDirTrain.getAbsolutePath() + "\\train_%d.csv", 0, trainSize - 1));
         SequenceRecordReader trainLabels = new CSVSequenceRecordReader();
-        trainLabels.initialize(new NumberedFileInputSplit(labelsDirTrain.getAbsolutePath() + "/train_%d.csv", 0, trainSize - 1));
+        trainLabels.initialize(new NumberedFileInputSplit(labelsDirTrain.getAbsolutePath() + "\\train_%d.csv", 0, trainSize - 1));
 
-        DataSetIterator trainDataIter = new SequenceRecordReaderDataSetIterator(trainFeatures, trainLabels, miniBatchSize, -1, true, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END);
+        DataSetIterator trainDataIter = new SequenceRecordReaderDataSetIterator(trainFeatures, trainLabels, 1, -1, true, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END);
 
 
         // ----- Load the test data -----
         //Same process as for the training data.
         SequenceRecordReader testFeatures = new CSVSequenceRecordReader();
-        testFeatures.initialize(new NumberedFileInputSplit(featuresDirTest.getAbsolutePath() + "/test_%d.csv", trainSize, trainSize + testSize - 1));
+        testFeatures.initialize(new NumberedFileInputSplit(featuresDirTest.getAbsolutePath() + "\\test_%d.csv", trainSize, trainSize + testSize - 1));
         SequenceRecordReader testLabels = new CSVSequenceRecordReader();
-        testLabels.initialize(new NumberedFileInputSplit(labelsDirTest.getAbsolutePath() + "/test_%d.csv", trainSize, trainSize + testSize - 1));
+        testLabels.initialize(new NumberedFileInputSplit(labelsDirTest.getAbsolutePath() + "\\test_%d.csv", trainSize, trainSize + testSize - 1));
   
-        DataSetIterator testDataIter = new SequenceRecordReaderDataSetIterator(testFeatures, testLabels, miniBatchSize, -1, true, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END);
+        DataSetIterator testDataIter = new SequenceRecordReaderDataSetIterator(testFeatures, testLabels, 1, -1, true, SequenceRecordReaderDataSetIterator.AlignmentMode.ALIGN_END);
             
         
         //Normalize the training data
@@ -154,8 +171,8 @@ public class Dl4jRnnRegressionTest
             .seed(140)
             .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
             .weightInit(WeightInit.XAVIER)
-            .updater(new Nesterovs(learnrate))      
-            //.l2(1e-6)
+            .updater(new Nesterovs(learnRate))
+            .l2(l2Value)
             //.dropOut(dropoutRate)
             .list()
             .layer(0, new LSTM.Builder()
@@ -165,22 +182,27 @@ public class Dl4jRnnRegressionTest
                 .activation(Activation.IDENTITY).nIn(nHidden).nOut(numVariables)
                 .build())
             .backpropType(BackpropType.TruncatedBPTT)
-            .tBPTTLength(50)
+            .tBPTTLength(backPropLength)
             .build();
 
         MultiLayerNetwork net = new MultiLayerNetwork(netConf);
         net.init();
         net.setListeners(new ScoreIterationListener(20));
 
-        
+        //Then add the StatsListener to collect this information from the network, as it trains
+        net.setListeners(new StatsListener(statsStorage));
+
+
         // ----- Train the network -----
-        for (int i = 0; i < nEpochs; i++) 
+        for (int i = 0; i < nEpochs; i++)
         {
             net.fit(trainDataIter);
             trainDataIter.reset();
 
             System.out.println("Epoch: "+(i+1)+" / "+nEpochs+"\n");
         }
+
+        System.out.println(net.score());
         
 //        @SuppressWarnings({ "rawtypes", "unchecked" })
 //		EarlyStoppingConfiguration esConf = new EarlyStoppingConfiguration.Builder()
@@ -195,10 +217,12 @@ public class Dl4jRnnRegressionTest
 //        @SuppressWarnings("unchecked")
 //		EarlyStoppingTrainer trainer = new EarlyStoppingTrainer(esConf, netConf , trainDataIter);
 //
+//
+//
 //        System.out.println("---- Start Training with "+nEpochs+" Epochs ----");
 //        //Conduct early stopping training:
 //        EarlyStoppingResult<MultiLayerNetwork> result = trainer.fit();
-//        
+//
 //        System.out.println(result);
 //
 //        //Print out the results:
@@ -211,7 +235,7 @@ public class Dl4jRnnRegressionTest
 //        //Get the best model:
 //        MultiLayerNetwork net = result.getBestModel();
 
-        
+
         /*
          * All code below this point is only necessary for plotting
          */
@@ -221,9 +245,7 @@ public class Dl4jRnnRegressionTest
         //Convert raw string data to IndArrays for plotting
         INDArray trainArray = createIndArrayFromStringList(rawStrings, 0, trainSize);
         INDArray testArray 	= createIndArrayFromStringList(rawStrings, trainSize, testSize);
-        
-        System.out.println(trainArray);
-        
+
         //Create plot for the actual data
         XYSeriesCollection c = new XYSeriesCollection();
         createSeries(c, trainArray, 0, "Train data");
@@ -233,11 +255,13 @@ public class Dl4jRnnRegressionTest
         //Init rnnTimeStep with train data, creating a plot for every step
         int timeStepCount = 0;
         INDArray init = Nd4j.zeros(miniBatchSize, 1);
-        while (trainDataIter.hasNext()) 
+        trainDataIter.next();
+        trainDataIter.next();
+        while (trainDataIter.hasNext())
         {
         	init = net.rnnTimeStep(trainDataIter.next().getFeatureMatrix());
         	normalizer.revertLabels(init);
-            createSeries(c, init, timeStepCount*miniBatchSize, "train " + String.valueOf(timeStepCount));
+            createSeries(c, init, timeStepCount*miniBatchSize + 2*miniBatchSize, "train " + String.valueOf(timeStepCount));
             timeStepCount++;
         }
         trainDataIter.reset();
@@ -248,9 +272,9 @@ public class Dl4jRnnRegressionTest
         INDArray predicted = Nd4j.zeros(miniBatchSize, 1);
         while (testDataIter.hasNext()) 
         {
-        	System.out.println("Test TimeStep No "+timeStepCount);
         	predicted = net.rnnTimeStep(testDataIter.next().getFeatureMatrix());
         	normalizer.revertLabels(predicted);
+        	System.out.println(predicted);
             createSeries(c, predicted, timeStepCount*miniBatchSize+trainSize, "predict " + String.valueOf(timeStepCount));
             timeStepCount++;
         }
@@ -294,32 +318,40 @@ public class Dl4jRnnRegressionTest
     private static void createSeries(XYSeriesCollection seriesCollection, INDArray data, int offset, String name)
     {
         int nRows = data.shape()[2];
-        System.out.println("nRows: " + nRows);
+        //System.out.println("nRows: " + nRows);
+
+        System.out.println(name+": "+offset);
+        System.out.println(data.slice(0));
 
         XYSeries series = new XYSeries(name);
         
-        System.out.println(data);
+        //System.out.println(data);
         
-        if(includeTimeData)
-        {
-        	 
-        	  for (int i = 0; i < nRows; i++) 
-              {            	  
-                  if (name.startsWith("predict") || name.startsWith("train") )
-                	  series.add(data.slice(0).getDouble(nRows+i), data.slice(0).getDouble(i));
-                  else
-                      series.add(data.slice(1).getDouble(i), data.slice(0).getDouble(i));
-              }
-        }
-        else 
-        {
-        	 for (int i = 0; i < nRows; i++) 
-             {
-                 series.add(i + offset, data.slice(0).getDouble(i));
-             }
-             
-        }
-       
+//        if(includeTimeData)
+//        {
+//        	  for (int i = 0; i < nRows; i++)
+//              {
+//                  if (name.startsWith("predict") || name.startsWith("train") )
+//                  {
+//                      series.add(data.slice(0).getDouble(nRows + i), data.slice(0).getDouble(i));
+//                  }
+//                  else
+//                  {
+//                      series.add(data.slice(1).getDouble(i), data.slice(0).getDouble(i));
+//                  }
+//              }
+//        }
+//        else
+//        {
+//        	 for (int i = 0; i < nRows; i++)
+//             {
+//                 series.add(i + offset, data.slice(0).getDouble(i));
+//             }
+//
+//        }
+
+        series.add(offset, data.slice(0).getDouble(0));
+
         seriesCollection.addSeries(series);
     }
     
@@ -370,7 +402,7 @@ public class Dl4jRnnRegressionTest
      */
     private static List<String> prepareTrainAndTest(int trainSize, int testSize, int numberOfTimesteps) throws IOException 
     {
-        Path rawPath = Paths.get(baseDir.getAbsolutePath() + "/"+datasetName+"_raw.csv");
+        Path rawPath = Paths.get(baseDir.getAbsolutePath() + "\\"+datasetName+"_raw.csv");
 
         List<String> rawStrings = Files.readAllLines(rawPath, Charset.defaultCharset());
         
@@ -401,8 +433,8 @@ public class Dl4jRnnRegressionTest
         
         for (int i = 0; i < trainSize; i++) 
         {
-            Path featuresPath = Paths.get(featuresDirTrain.getAbsolutePath() + "/train_" + i + ".csv");
-            Path labelsPath = Paths.get(labelsDirTrain + "/train_" + i + ".csv");
+            Path featuresPath = Paths.get(featuresDirTrain.getAbsolutePath() + "\\train_" + i + ".csv");
+            Path labelsPath = Paths.get(labelsDirTrain + "\\train_" + i + ".csv");
             
             for (int j = 0; j < numberOfTimesteps; j++) 
             {
@@ -410,23 +442,23 @@ public class Dl4jRnnRegressionTest
             }
             
             Files.write(labelsPath, rawStrings.get(i + numberOfTimesteps).concat(System.lineSeparator()).getBytes(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-            System.out.println("Writing Train Files " + (++fileWriteCounter) + " / " + (trainSize));
+            System.out.println("Writing Train Files " + (++fileWriteCounter) + " \\ " + (trainSize));
         }
 
         fileWriteCounter = 0;
         
         for (int i = trainSize; i < testSize + trainSize; i++)
         {
-            Path featuresPath = Paths.get(featuresDirTest + "/test_" + i + ".csv");
-            Path labelsPath = Paths.get(labelsDirTest + "/test_" + i + ".csv");
+            Path featuresPath = Paths.get(featuresDirTest + "\\test_" + i + ".csv");
+            Path labelsPath = Paths.get(labelsDirTest + "\\test_" + i + ".csv");
             
             for (int j = 0; j < numberOfTimesteps; j++) 
             {
                 Files.write(featuresPath, rawStrings.get(i + j).concat(System.lineSeparator()).getBytes(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
             }
-            
+
             Files.write(labelsPath, rawStrings.get(i + numberOfTimesteps).concat(System.lineSeparator()).getBytes(), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-            System.out.println("Writing Test Files " + (++fileWriteCounter) + " / " + (testSize));
+            System.out.println("Writing Test Files " + (++fileWriteCounter) + " \\ " + (testSize));
         }
         
         return rawStrings;
